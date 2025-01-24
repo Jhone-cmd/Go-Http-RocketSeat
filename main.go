@@ -59,6 +59,24 @@ func (c ContactService) Get(w http.ResponseWriter, r *http.Request, id int) {
 	}
 }
 
+func (c *ContactService) Update(w http.ResponseWriter, r *http.Request, id int) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var contact Contact
+	err := json.NewDecoder(r.Body).Decode(&contact)
+	if err != nil {
+		http.Error(w, "Unable to update contact", http.StatusBadRequest)
+	}
+
+	if _, ok := c.Contacts[id]; ok {
+		contact.Id = id
+		c.Contacts[id] = contact
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		http.Error(w, "Contact Not Found", http.StatusNotFound)
+	}
+}
+
 func (c *ContactService) Delete(w http.ResponseWriter, r *http.Request, id int) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -86,6 +104,16 @@ func handleGetContacts(w http.ResponseWriter, r *http.Request, service *ContactS
 	}
 }
 
+func handleUpdateContacts(w http.ResponseWriter, r *http.Request, service *ContactService) {
+	q := r.URL.Query()
+	if q.Get("id") != "" {
+		id, _ := strconv.Atoi(q.Get("id"))
+		service.Update(w, r, id)
+	} else {
+		http.Error(w, "Failed to Update Contact", http.StatusBadRequest)
+	}
+}
+
 func handleDeleteContacts(w http.ResponseWriter, r *http.Request, service *ContactService) {
 	q := r.URL.Query()
 	if q.Get("id") != "" {
@@ -106,6 +134,8 @@ func main() {
 			handleGetContacts(w, r, service)
 		case http.MethodPost:
 			handleCreateContacts(w, r, service)
+		case http.MethodPut:
+			handleUpdateContacts(w, r, service)
 		case http.MethodDelete:
 			handleDeleteContacts(w, r, service)
 		default:
@@ -113,5 +143,6 @@ func main() {
 		}
 	})
 
+	log.Println("Server Running...")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
