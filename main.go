@@ -55,8 +55,23 @@ func (c ContactService) Get(w http.ResponseWriter, r *http.Request, id int) {
 	if value, ok := c.Contacts[id]; ok {
 		json.NewEncoder(w).Encode(value)
 	} else {
-		http.Error(w, "Contact not Found", http.StatusNotFound)
+		http.Error(w, "Contact Not Found", http.StatusNotFound)
 	}
+}
+
+func (c *ContactService) Delete(w http.ResponseWriter, r *http.Request, id int) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if _, ok := c.Contacts[id]; ok {
+		delete(c.Contacts, id)
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		http.Error(w, "Contact Not Found", http.StatusNotFound)
+	}
+}
+
+func handleCreateContacts(w http.ResponseWriter, r *http.Request, service *ContactService) {
+	service.Create(w, r)
 }
 
 func handleGetContacts(w http.ResponseWriter, r *http.Request, service *ContactService) {
@@ -71,8 +86,14 @@ func handleGetContacts(w http.ResponseWriter, r *http.Request, service *ContactS
 	}
 }
 
-func handleCreateContacts(w http.ResponseWriter, r *http.Request, service *ContactService) {
-	service.Create(w, r)
+func handleDeleteContacts(w http.ResponseWriter, r *http.Request, service *ContactService) {
+	q := r.URL.Query()
+	if q.Get("id") != "" {
+		id, _ := strconv.Atoi(q.Get("id"))
+		service.Delete(w, r, id)
+	} else {
+		http.Error(w, "Failed to Delete Contact", http.StatusBadRequest)
+	}
 }
 
 func main() {
@@ -85,6 +106,8 @@ func main() {
 			handleGetContacts(w, r, service)
 		case http.MethodPost:
 			handleCreateContacts(w, r, service)
+		case http.MethodDelete:
+			handleDeleteContacts(w, r, service)
 		default:
 			http.Error(w, "Method not Allowed", http.StatusMethodNotAllowed)
 		}
